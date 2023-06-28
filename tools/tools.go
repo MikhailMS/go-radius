@@ -7,8 +7,8 @@ import (
 	"net"
   "crypto/md5"
   "encoding/binary"
-  "strings"
   "strconv"
+  "strings"
 )
 
 // IPv6StringToBytes converts IPv6 Address string into vector of bytes

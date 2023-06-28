@@ -3,7 +3,11 @@ package protocol
 
 import (
   "crypto/md5"
+  "crypto/hmac"
+  "encoding/binary"
   "math/rand"
+
+  "github.com/MikhailMS/go-radius/tools"
 )
 
 // RadiusMsgType represents allowed types of RADIUS messages/packets
@@ -56,6 +60,76 @@ const (
   CoANAK
 )
 
+func typeCodeFromUint8(code uint8) (TypeCode, bool) {
+  switch code {
+    case 1:
+      return AccessRequest, true
+    case 2:
+      return AccessAccept, true
+    case 3:
+      return AccessReject, true
+    case 4:
+      return AccountingRequest, true
+    case 5:
+      return AccountingResponse, true
+    case 11:
+      return AccessChallenge, true
+    case 12:
+      return StatusServer, true
+    case 13:
+      return StatusClient, true
+    case 40:
+      return DisconnectRequest, true
+    case 41:
+      return DisconnectACK, true
+    case 42:
+      return DisconnectNAK, true
+    case 43:
+      return CoARequest, true
+    case 44:
+      return CoAACK, true
+    case 45:
+      return CoANAK, true
+    default:
+      return 0, false
+  }
+}
+
+func typeCodeToUint8(code TypeCode) (uint8, bool) {
+  switch code {
+    case AccessRequest:
+      return 1, true
+    case AccessAccept:
+      return 2, true
+    case AccessReject:
+      return  3, true
+    case AccountingRequest:
+      return  4, true
+    case AccountingResponse:
+      return 5, true
+    case AccessChallenge:
+      return 11, true
+    case StatusServer:
+      return 12, true
+    case StatusClient:
+      return 13, true
+    case DisconnectRequest:
+      return 40, true
+    case DisconnectACK:
+      return 41, true
+    case DisconnectNAK:
+      return 42, true
+    case CoARequest:
+      return 43, true
+    case CoAACK:
+      return 44, true
+    case CoANAK:
+      return 45, true
+    default:
+      return 0, false
+  }
+}
+
 // RadiusAttribute represents an attribute, which would be sent to RADIUS Server/client as a part of RadiusPacket
 type RadiusAttribute struct {
   id    uint8
@@ -67,26 +141,26 @@ type RadiusAttribute struct {
 //
 // Returns nil if ATTRIBUTE with such name is not found in Dictionary
 func CreateRadAttributeByName(dictionary *Dictionary, attributeName string, value *[]uint8) RadiusAttribute {
-  for attr := range dictionary.Attributes() {
+  for _, attr := range dictionary.Attributes() {
     if attr.Name() == attributeName {
-      return RadiusAttribute {attr.Id, attributeName, *value}
+      return RadiusAttribute {attr.Code(), attributeName, *value}
     }
   }
 
-  return nil
+  return RadiusAttribute{}
 }
 
 // CreateRadAttributeByID creates RadiusAttribute with given id
 //
 // Returns nil if ATTRIBUTE with such id is not found in Dictionary
-func CreateRadAttributeByID(dictionary *Dictionary, attributeID string, value *[]uint8) RadiusAttribute {
-  for attr := range dictionary.Attributes() {
+func CreateRadAttributeByID(dictionary *Dictionary, attributeID uint8, value *[]uint8) RadiusAttribute {
+  for _, attr := range dictionary.Attributes() {
     if attr.Code() == attributeID {
       return RadiusAttribute {attributeID, attr.Name(), *value}
     }
   }
 
-  return nil
+  return RadiusAttribute{}
 }
 
 // OverrideValue overriddes RadiusAttribute value
@@ -115,42 +189,46 @@ func (radAttr *RadiusAttribute) Name() string {
 func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttributeTypes) bool {
   switch allowedType {
     case AsciiString:
-      if string(radAttr.value) {
+      if string(radAttr.value) != "" {
         return true
       }
       return false
     case ByteString:
-      if string(radAttr.value) {
+      if string(radAttr.value) != "" {
         return true
       }
       return false
     case Concat:
-      if string(radAttr.value) {
+      if string(radAttr.value) != "" {
         return true
       }
       return false
     case Integer:
-      if BytesToInteger(radAttr.value) {
+      _, ok := tools.BytesToInteger(radAttr.value)
+      if ok {
         return true
       }
       return false
     case Date:
-      if BytesToTimestamp(radAttr.value) {
+      _, ok := tools.BytesToTimestamp(radAttr.value)
+      if ok {
         return true
       }
       return false
     case IPv4Addr:
-      if BytesToIPv4String(radAttr.value) {
+      if tools.BytesToIPv4String(radAttr.value) != "" {
         return true
       }
       return false
     case IPv6Addr:
-      if BytesToIPv6String(radAttr.value) {
+      _, ok := tools.BytesToIPv6String(radAttr.value)
+      if ok {
         return true
       }
       return false
     case IPv6Prefix:
-      if BytesToIPv6String(radAttr.value) {
+      _, ok := tools.BytesToIPv6String(radAttr.value)
+      if ok {
         return true
       }
       return false
@@ -161,49 +239,31 @@ func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttribu
 
 // OriginalStringValue returns RadiusAttribute value, if the attribute is dictionary's ATTRIBUTE with code type string, ipaddr,
 // ipv6addr or ipv6prefix
-func (radAttr *RadiusAttribute) OriginalStringValue(allowedType SupportedAttributeTypes) string {
+func (radAttr *RadiusAttribute) OriginalStringValue(allowedType SupportedAttributeTypes) (string, bool) {
   switch allowedType {
     case AsciiString:
-      if value := string(radAttr.value) {
-        return value
-      }
-      return ""
+      return string(radAttr.value), true
     case IPv4Addr:
-      if value := BytesToIPv4String(radAttr.value) {
-        return value
-      }
-      return ""
+      return tools.BytesToIPv4String(radAttr.value), true
     case IPv6Addr:
-      if value := BytesToIPv6String(radAttr.value) {
-        return value
-      }
-      return ""
+      return tools.BytesToIPv6String(radAttr.value)
     case IPv6Prefix:
-      if value := BytesToIPv6String(radAttr.value) {
-        return value
-      }
-      return ""
+      return tools.BytesToIPv6String(radAttr.value)
     default:
-      return ""
+      return "", false
   }
 }
 
 // OriginalIntegerValue returns RadiusAttribute value, if the attribute is dictionary's ATTRIBUTE with code type
 // integer or date
-func (radAttr *RadiusAttribute) OriginalIntegerValue(allowedType SupportedAttributeTypes) uint32 {
+func (radAttr *RadiusAttribute) OriginalIntegerValue(allowedType SupportedAttributeTypes) (uint32, bool) {
   switch allowedType {
     case Integer:
-      if value := BytesToInteger(radAttr.value) {
-        return value
-      }
-      return 0
+      return tools.BytesToInteger(radAttr.value)
     case Date:
-      if value := BytesToTimestamp(radAttr.value) {
-        return value
-      }
-      return 0
+      return tools.BytesToTimestamp(radAttr.value)
     default:
-      return 0
+      return 0, false
   }
 }
 
@@ -221,7 +281,7 @@ func (radAttr *RadiusAttribute) toBytes() []uint8 {
   var output []uint8
 
   output = append(output, radAttr.id)
-  output = append(output, uint8(len(radAttr.value)))
+  output = append(output, uint8(2 + len(radAttr.value)))
   output = append(output, radAttr.value...)
 
   return output
@@ -244,20 +304,23 @@ func InitialiseRadPacket(code TypeCode) RadiusPacket {
 func InitialiseRadPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) RadiusPacket {
   var attributes []RadiusAttribute
  
-  code := typeCodeFromUint8(bytes[0])
-  id   := bytes[1]
-  authenticator := bytes[4:20]
+  code, ok := typeCodeFromUint8((*bytes)[0])
+  if !ok {
+    panic("Invalid TypeCode")
+  }
+  id   := (*bytes)[1]
+  authenticator := (*bytes)[4:20]
 
-  lastIndex = 20
+  lastIndex := 20
 
   for {
     if lastIndex == len(*bytes) { break }
     
-    attrID     := bytes[lastIndex]
-    attrLength := int(bytes[lastIndex + 1])
-    attrValue  := bytes[(lastIndex + 2):(lastIndex + attrLength)]
+    attrID     := (*bytes)[lastIndex]
+    attrLength := int((*bytes)[lastIndex + 1])
+    attrValue  := (*bytes)[(lastIndex + 2):(lastIndex + attrLength)]
 
-    attributes = append(attributes, CreateRadAttributeByID(dictionary, attrID, *attrValue))
+    attributes = append(attributes, CreateRadAttributeByID(dictionary, attrID, &attrValue))
     lastIndex += attrLength
   }
 
@@ -283,8 +346,9 @@ func (radPacket *RadiusPacket) OverrideAuthenticator(authenticator []uint8) {
 //
 // Note: would fail if RadiusPacket has no Message-Authenticator attribute defined
 func (radPacket *RadiusPacket) OverrideMessageAuthenticator(newMessageAuth []uint8) {
-  for attr := range radPacket.attributes {
-    if attr.name == "Message-Authenticator" {
+  for idx := range radPacket.attributes {
+    attr := &radPacket.attributes[idx]
+    if attr.Name() == "Message-Authenticator" {
       attr.OverrideValue(newMessageAuth)
     }
   }
@@ -300,18 +364,17 @@ func (radPacket *RadiusPacket) GenerateMessageAuthenticator(secret string) {
   radPacket.OverrideMessageAuthenticator(zeroedAuthenticator)
 
   // Step 2. Calculate HMAC-MD5 for the entire RadiusPacket
-  md5Hash := md5.New()
-  md5Hash.Write([]uint8(secret))
-  md5Hash.Write(radPacket.ToBytes())
+  hash := hmac.New(md5.New, []uint8(secret))
+  hash.Write(radPacket.ToBytes())
 
   // Step 3. Set Message-Authenticator to the result of Step 2
-  radPacket.OverrideMessageAuthenticator(md5Hash.Sum(nil))
+  radPacket.OverrideMessageAuthenticator(hash.Sum(nil))
 }
 
 // MessageAuthenticator returns Message-Authenticator value, if exists in RadiusPacket
-func (radPacket *RadiusPacket) MessageAuthenticator(attr []RadiusAttribute) []uint8 {
-  for attr := range radPacket.attributes {
-    if attr.name == "Message-Authenticator" {
+func (radPacket *RadiusPacket) MessageAuthenticator() []uint8 {
+  for _, attr := range radPacket.attributes {
+    if attr.Name() == "Message-Authenticator" {
       return attr.value
     }
   }
@@ -320,49 +383,49 @@ func (radPacket *RadiusPacket) MessageAuthenticator(attr []RadiusAttribute) []ui
 }
 
 // ID returns RadiusPacket id
-func (radPacket *RadiusPacket) ID(attr []RadiusAttribute) {
+func (radPacket *RadiusPacket) ID() uint8 {
   return radPacket.id
 }
 
 // Authenticator returns RadiusPacket authenticator
-func (radPacket *RadiusPacket) Authenticator(attr []RadiusAttribute) {
+func (radPacket *RadiusPacket) Authenticator() []uint8 {
   return radPacket.authenticator
 }
 
 // Code returns RadiusPacket code
-func (radPacket *RadiusPacket) Code(attr []RadiusAttribute) {
+func (radPacket *RadiusPacket) Code() TypeCode {
   return radPacket.code
 }
 
 // Attributes returns RadiusPacket attributes
-func (radPacket *RadiusPacket) Attributes(attr []RadiusAttribute) {
+func (radPacket *RadiusPacket) Attributes() []RadiusAttribute {
   return radPacket.attributes
 }
 
 // AttributeByName returns RadiusAttribute with given name
 func (radPacket *RadiusPacket) AttributeByName(attrName string) RadiusAttribute {
-  for attr := range radPacket.attributes {
-    if attr.name == attrName {
+  for _, attr := range radPacket.attributes {
+    if attr.Name() == attrName {
       return attr
     }
   }
 
-  return nil
+  return RadiusAttribute{}
 }
 
 // AttributeByID returns RadiusAttribute with given id
 func (radPacket *RadiusPacket) AttributeByID(attrID uint8) RadiusAttribute {
-  for attr := range radPacket.attributes {
-    if attr.id == attrID {
+  for _, attr := range radPacket.attributes {
+    if attr.ID() == attrID {
       return attr
     }
   }
 
-  return nil
+  return RadiusAttribute{}
 }
 
 // ToBytes converts RadiusPacket into ready-to-be-sent bytes slice
-func (radPacket *RadiusPacket) ToBytes(attr []RadiusAttribute) []uint8 {
+func (radPacket *RadiusPacket) ToBytes() []uint8 {
   /* Prepare packet for a transmission to server/client
    *
    *          0               1               2         3
@@ -387,11 +450,15 @@ func (radPacket *RadiusPacket) ToBytes(attr []RadiusAttribute) []uint8 {
     radPacket.authenticator = createPacketAuthenticator()
   }
 
-  for attr := range radPacket.attributes {
-    packetAttr = append(packetAttr, attr.ToBytes()...)
+  for _, attr := range radPacket.attributes {
+    packetAttr = append(packetAttr, attr.toBytes()...)
   }
 
-  packetBytes = append(packetBytes, radPacket.code)
+  code, ok := typeCodeToUint8(radPacket.code)
+  if !ok {
+    panic("Invalid TypeCode")
+  }
+  packetBytes = append(packetBytes, code)
   packetBytes = append(packetBytes, radPacket.id)
   packetBytes = append(packetBytes, packetLengthToBytes(uint16(20 + len(packetAttr)))...)
   packetBytes = append(packetBytes, radPacket.authenticator...)
@@ -420,5 +487,8 @@ func createPacketAuthenticator() []uint8 {
 
 // packetLengthToBytes converts uint16 into []uint8 (of length 2)
 func packetLengthToBytes(length uint16) []uint8 {
-  return []uint8{ uint8(length), uint8(length >> 8) }
+  bytes := make([]byte, 2)
+
+	binary.BigEndian.PutUint16(bytes, length)
+  return bytes
 }

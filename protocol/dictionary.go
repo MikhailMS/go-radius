@@ -12,11 +12,11 @@ const COMMENT_PREFIX = "#"
 
 // Represents a list of supported data types
 // as defined in RFC 2865 & RFC 8044 
-type SupportedAttributeType int
+type SupportedAttributeTypes int
 
 const (
     // Go's String; RFC 8044 calls this "text" - UTF-8 text
-    AsciiString SupportedAttributeType = iota
+    AsciiString SupportedAttributeTypes = iota
     // Go's [u8]; RFC 8044 calls this "string" (FreeRADIUS calls this "octets") - binary data as a sequence of undistinguished octets
     ByteString
     // Go's u32
@@ -63,18 +63,18 @@ type DictionaryAttribute struct {
   name       string
   vendorName string
   code       uint8
-  codeType   SupportedAttributeType
+  codeType   SupportedAttributeTypes
 }
 
-func (da *DictionaryAttribute) Name() string {
+func (da DictionaryAttribute) Name() string {
   return da.name
 }
 
-func (da *DictionaryAttribute) Code() uint8 {
+func (da DictionaryAttribute) Code() uint8 {
   return da.code
 }
 
-func (da *DictionaryAttribute) CodeType() SupportedAttributeType {
+func (da DictionaryAttribute) CodeType() SupportedAttributeTypes {
   return da.codeType
 }
 
@@ -162,21 +162,21 @@ func DictionaryFromFile(filePath string) Dictionary {
   return Dictionary{ attributes, values, vendors }
 }
 
-func (dict *Dictionary) Attributes() *[]DictionaryAttribute {
-  return &dict.attributes
+func (dict *Dictionary) Attributes() []DictionaryAttribute {
+  return dict.attributes
 }
 
-func (dict *Dictionary) Values() *[]DictionaryValue {
-  return &dict.values
+func (dict *Dictionary) Values() []DictionaryValue {
+  return dict.values
 }
 
-func (dict *Dictionary) Vendors() *[]DictionaryVendor {
-  return &dict.vendors
+func (dict *Dictionary) Vendors() []DictionaryVendor {
+  return dict.vendors
 }
 // =============================
 
 
-func assignAttributeType(codeType string) SupportedAttributeType {
+func assignAttributeType(codeType string) SupportedAttributeTypes {
   switch codeType {
     case "text":
       return AsciiString
@@ -188,7 +188,7 @@ func assignAttributeType(codeType string) SupportedAttributeType {
       return Integer64
     case "time":
       return Date
-    case "ipv4addr":
+    case "ipv4addr", "ipaddr":
       return IPv4Addr
     case "ipv4prefix":
       return IPv4Prefix

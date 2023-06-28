@@ -7,6 +7,7 @@ import (
 	"net"
   "crypto/md5"
   "encoding/binary"
+  "errors"
   "strconv"
   "strings"
 )
@@ -14,25 +15,27 @@ import (
 // IPv6StringToBytes converts IPv6 Address string into vector of bytes
 //
 // Should be used for any Attribute of type **ipv6addr** or **ipv6prefix** to ensure value is encoded correctly
-func IPv6StringToBytes(ipv6 string) []uint8 {
+// Returns value & error, so need to check if any errors occured before using the value
+func IPv6StringToBytes(ipv6 string) ([]uint8, error) {
   var ipv6Bytes []uint8
   processedIPv6 := strings.Split(ipv6, "/")
 
   if len(processedIPv6) == 2 {
     value, err := strconv.ParseUint(processedIPv6[1], 10, 8) // Doesn't really converts to uint8, require further cast
     if err != nil {
-      panic(err)
+      return []uint8{}, err
     }
 
     ipv6Bytes = append(ipv6Bytes, 0, uint8(value))
   }
 
   ipv6Bytes = append(ipv6Bytes, net.ParseIP(processedIPv6[0])...)
-  return ipv6Bytes 
+  return ipv6Bytes, nil
 }
 
 // BytesToIPv6String converts IPv6 bytes into IPv6 string
-func BytesToIPv6String(ipv6 []uint8) string {
+// Returns value & bool => need to check bool, if true then successful, otherwise not
+func BytesToIPv6String(ipv6 []uint8) (string, bool) {
   if len(ipv6) == 18 {
     var ipv6StringBuilder strings.Builder
 
@@ -40,23 +43,24 @@ func BytesToIPv6String(ipv6 []uint8) string {
     ipv6StringBuilder.WriteString("/")
     ipv6StringBuilder.WriteString(strconv.FormatUint(uint64(ipv6[1]), 10))
 
-    return ipv6StringBuilder.String()
+    return ipv6StringBuilder.String(), true
   } else if len(ipv6) == 16 {
-    return net.IP{ipv6[0], ipv6[1], ipv6[2], ipv6[3], ipv6[4], ipv6[5], ipv6[6], ipv6[7], ipv6[8], ipv6[9], ipv6[10], ipv6[11], ipv6[12], ipv6[13], ipv6[14], ipv6[15]}.String()
+    return net.IP{ipv6[0], ipv6[1], ipv6[2], ipv6[3], ipv6[4], ipv6[5], ipv6[6], ipv6[7], ipv6[8], ipv6[9], ipv6[10], ipv6[11], ipv6[12], ipv6[13], ipv6[14], ipv6[15]}.String(), true
   }
 
-  return ""
+  return "", false
 }
 
 // IPv4StringToBytes converts IPv4 Address string into vector of bytes
 //
 // Should be used for any Attribute of type **ipaddr** to ensure value is encoded correctly
-func IPv4StringToBytes(ipv4 string) []uint8 {
+// Returns value & error, so need to check if any errors occured before using the value
+func IPv4StringToBytes(ipv4 string) ([]uint8, error) {
   if strings.Contains(ipv4, "/") {
-    panic("No support for IPv4 addresses with subnet")
+    return []uint8{}, errors.New("No support for IPv4 addresses with subnet")
   }
 
-  return net.ParseIP(ipv4)[12:]
+  return net.ParseIP(ipv4)[12:], nil
 }
 
 // BytesToIPv4String converts IPv4 bytes into IPv4 string
@@ -77,8 +81,8 @@ func IntegerToBytes(integer uint32) []uint8 {
 }
 
 // BytesToInteger converts integer bytes into u32
-func BytesToInteger(integer []uint8) uint32 {
-  return binary.BigEndian.Uint32(integer)
+func BytesToInteger(integer []uint8) (uint32, bool) {
+  return binary.BigEndian.Uint32(integer), true
 }
 
 // TimestampToBytes converts timestamp (int64) into vector of bytes
@@ -87,24 +91,25 @@ func BytesToInteger(integer []uint8) uint32 {
 // 
 // Golang has timestamps as int64, however RADIIUS protocol expects timestamp('time') as uint32
 // therefore we need to apply a bit of logic to link these 2 together
-func TimestampToBytes(timestamp int64) []uint8 {
+// Returns value & error, so need to check if any errors occured before using the value
+func TimestampToBytes(timestamp int64) ([]uint8, error) {
   output := make([]uint8, 4)
 
   if timestamp > 0xFFFFFFFF {
-    return nil
+    return []uint8{}, errors.New("Provided integer won't fit into uint32")
   }
 
   binary.BigEndian.PutUint32(output, uint32(timestamp))
-  return output
+  return output, nil
 }
 
 // BytesToTimestamp converts timestamp bytes into int64
 //
 // Golang has timestamps as int64, however RADIIUS protocol has timestamp('time') as uint32
 // therefore we need to apply a bit of logic to link these 2 together
-func BytesToTimestamp(timestamp []uint8) int64 {
+func BytesToTimestamp(timestamp []uint8) (uint32, bool) {
   _tmp := binary.BigEndian.Uint32(timestamp)
-	return int64(_tmp)
+	return _tmp, true
 }
 
 
@@ -223,7 +228,7 @@ func SaltEncryptData(data, authenticator, salt, secret *[]uint8) []uint8 {
 // SaltDecryptData decrypts data with salt since RADIUS packet is sent in plain text
 //
 // Should be used for RADIUS Tunnel-Password Attribute
-func SaltDecryptData(data, authenticator, secret *[]uint8) []uint8 {
+func SaltDecryptData(data, authenticator, secret *[]uint8) ([]uint8, error) {
   /*
    * The salt decryption behaves almost the same as normal Password encryption in RADIUS
    * The main difference is the presence of a two byte salt, which is appended to the authenticator
@@ -231,13 +236,13 @@ func SaltDecryptData(data, authenticator, secret *[]uint8) []uint8 {
   initialLen := uint8(len(*data))
 
   if initialLen <= 1 {
-    panic("salt encrypted attribute too short")
+    return []uint8{}, errors.New("salt encrypted attribute too short")
   }
   if initialLen <= 17 {
     // If len() equals to 3, it means that there is a Salt or there is a salt & data.len(): Both cases mean "Password is empty"
     // But for this function to actually work len() must be at least 18, otherwise we cannot
     // decrypt data as it is invalid
-    return []uint8{}
+    return []uint8{}, nil
   }
 
   // Length = len(*data) - 2
@@ -275,10 +280,10 @@ func SaltDecryptData(data, authenticator, secret *[]uint8) []uint8 {
   result = result[1:]
 
   if targetLen > initialLen - 3 {
-    panic("Tunnel Password is too long (shared secret might be wrong)")
+    return []uint8{}, errors.New("Tunnel Password is too long (shared secret might be wrong)")
   }
 
-  return result[:targetLen]
+  return result[:targetLen], nil
 }
 
 

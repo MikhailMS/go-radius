@@ -9,7 +9,7 @@ import (
 func TestIPv6ToBytesWoSubnet(t *testing.T) {
   expectedBytes := []uint8{ 252, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }
   
-  ipv6Bytes := IPv6StringToBytes("fc66::1")
+  ipv6Bytes, _ := IPv6StringToBytes("fc66::1")
   assert.Equal(t, expectedBytes, ipv6Bytes, "IPv6 bytes are not correct!")
 }
 
@@ -17,13 +17,15 @@ func TestBytesToIPv6StringWoSubnet(t *testing.T) {
   expectedString := "fc66::1"
 
   ipv6Bytes := []uint8{ 252, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }
-  assert.Equal(t, expectedString, BytesToIPv6String(ipv6Bytes), "IPv6 string are not correct!")
+
+  ipv6String, _ := BytesToIPv6String(ipv6Bytes)
+  assert.Equal(t, expectedString, ipv6String, "IPv6 string is not correct!")
 }
 
 func TestIPv6ToBytesWSubnet(t *testing.T) {
   expectedBytes := []uint8{ 0, 64, 252, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }
 
-  ipv6Bytes := IPv6StringToBytes("fc66::1/64")
+  ipv6Bytes, _ := IPv6StringToBytes("fc66::1/64")
   assert.Equal(t, expectedBytes, ipv6Bytes, "IPv6 bytes are not correct!")
 }
 
@@ -31,13 +33,15 @@ func TestBytesToIPv6StringWSubnet(t *testing.T) {
   expectedString := "fc66::1/64"
 
   ipv6Bytes := []uint8{ 0, 64, 252, 102, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 }
-  assert.Equal(t, expectedString, BytesToIPv6String(ipv6Bytes), "IPv6 string are not correct!")
+
+  ipv6String, _ := BytesToIPv6String(ipv6Bytes)
+  assert.Equal(t, expectedString, ipv6String, "IPv6 string is not correct!")
 }
 
 func TestIPv4StringToBytes(t *testing.T) {
   expectedBytes := []uint8{ 192, 1, 10, 1 }
 
-  ipv4Bytes     := IPv4StringToBytes("192.1.10.1")
+  ipv4Bytes, _ := IPv4StringToBytes("192.1.10.1")
   assert.Equal(t, expectedBytes, ipv4Bytes, "IPv4 bytes are not correct!")
 }
 
@@ -59,21 +63,27 @@ func TestBytesToInteger(t *testing.T) {
   expectedInteger := uint32(10000)
 
   integerBytes := []uint8{ 0, 0, 39, 16 } 
-  assert.Equal(t, expectedInteger, BytesToInteger(integerBytes), "Integer is not correct!")
+
+  integer, _ := BytesToInteger(integerBytes)
+  assert.Equal(t, expectedInteger, integer, "Integer is not correct!")
 }
 
 func TestTimestampToBytes(t *testing.T) {
   expectedBytes := []uint8 { 95, 71, 138, 29 }
 
   timestamp := int64(1598523933)
-  assert.Equal(t, expectedBytes, TimestampToBytes(timestamp), "Timestamp bytes is not correct!")
+
+  timestampBytes, _ := TimestampToBytes(timestamp)
+  assert.Equal(t, expectedBytes, timestampBytes, "Timestamp bytes is not correct!")
 }
 
 func TestBytesToTimestamp(t *testing.T) {
-  expectedTimestamp := int64(1598523933)
+  expectedTimestamp := uint32(1598523933)
 
   timestampBytes := []uint8 { 95, 71, 138, 29 }
-  assert.Equal(t, expectedTimestamp, BytesToTimestamp(timestampBytes), "Timestamp integer is not correct!")
+
+  timestamp, _ := BytesToTimestamp(timestampBytes)
+  assert.Equal(t, expectedTimestamp, timestamp, "Timestamp integer is not correct!")
 }
 
 
@@ -199,7 +209,8 @@ func TestSaltDecryptData(t *testing.T) {
   authenticator := make([]uint8, 16)
   plaintext     := []uint8("password")
 
-  assert.Equal(t, plaintext, SaltDecryptData(&encryptedData, &authenticator, &secret), "SaltDecryptData data is not correct!")
+  decryptedData, _ := SaltDecryptData(&encryptedData, &authenticator, &secret)
+  assert.Equal(t, plaintext, decryptedData, "SaltDecryptData data is not correct!")
 }
 
 func TestSaltDecryptDataLongData(t *testing.T) {
@@ -213,5 +224,6 @@ func TestSaltDecryptDataLongData(t *testing.T) {
   authenticator := make([]uint8, 16)
   plaintext     := []uint8("a very long password, which will need multiple iterations")
 
-  assert.Equal(t, plaintext, SaltDecryptData(&encryptedData, &authenticator, &secret), "SaltDecryptData data is not correct!")
+  decryptedData, _ := SaltDecryptData(&encryptedData, &authenticator, &secret)
+  assert.Equal(t, plaintext, decryptedData, "SaltDecryptData data is not correct!")
 }

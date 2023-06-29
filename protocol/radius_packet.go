@@ -218,7 +218,8 @@ func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttribu
       }
       return false
     case IPv4Addr:
-      if tools.BytesToIPv4String(radAttr.value) != "" {
+      value, _ := tools.BytesToIPv4String(radAttr.value)
+      if value  != "" {
         return true
       }
       return false
@@ -246,7 +247,11 @@ func (radAttr *RadiusAttribute) OriginalStringValue(allowedType SupportedAttribu
     case AsciiString:
       return string(radAttr.value), true
     case IPv4Addr:
-      return tools.BytesToIPv4String(radAttr.value), true
+      value, err := tools.BytesToIPv4String(radAttr.value)
+      if err != nil {
+        return "", false
+      }
+      return value, true
     case IPv6Addr:
       return tools.BytesToIPv6String(radAttr.value)
     case IPv6Prefix:

@@ -48,7 +48,7 @@ func TestIPv4StringToBytes(t *testing.T) {
 func TestIPv4BytesToString(t *testing.T) {
   expectedString := "192.1.10.1"
 
-  ipv4String     := BytesToIPv4String([]uint8{ 192, 1, 10, 1 })
+  ipv4String, _ := BytesToIPv4String([]uint8{ 192, 1, 10, 1 })
   assert.Equal(t, expectedString, ipv4String, "IPv4 string is not correct!")
 }
 

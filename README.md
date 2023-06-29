@@ -1,24 +1,33 @@
 # Golang RADIUS Protocol
 Pure (as far as this code goes) implementation of RADIUS protocol in Go
 
+Most of the RFCs related to RADIUS protocol are implemented with a few exceptions for a few data types, ie TLV, VSA
 
-Rationale behind this project:
-1. Practice Golang
-2. I already have RADIUS protocol implemented in Rust & V-language, so having it in Go would also be cool (although I know there is already implementation in Go)
+#### Go Version Support
+![Go version](https://img.shields.io/badge/Go-1.20-brightgreen.svg)
+![Go version](https://img.shields.io/badge/Go-1.19-brightgreen.svg)
+![Go version](https://img.shields.io/badge/Go-1.18-brightgreen.svg)
+
+Older versions may also be fine, however Action CI/CD only tests against versions above
 
 
 ## Installation
 ```
+go get "github.com/MikhailMS/go-radius"
+
+# In Go code
 import "github.com/MikhailMS/go-radius"
 ```
 
-
 ## Tests
-1. `go test`
+1. `go test ./...`
 
 
-## Minimum Supported Version of Golang (MSVG)
-1. `1.20.5`
+## Contributing
+Would you love to contribute to this project? I'd really appreciate your input!
+
+1. Raise an issue, if you believe some functionality is missing, something is broken and etc
+2. Create a PR, if you already sorted out some issues yourself. **Please ensure** to submit PR to **development branch**
 
 
 ## Notes

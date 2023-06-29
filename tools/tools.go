@@ -4,12 +4,13 @@
 package tools
 
 import (
+  "fmt"
+	"crypto/md5"
+	"encoding/binary"
+	"errors"
 	"net"
-  "crypto/md5"
-  "encoding/binary"
-  "errors"
-  "strconv"
-  "strings"
+	"strconv"
+	"strings"
 )
 
 // IPv6StringToBytes converts IPv6 Address string into vector of bytes
@@ -64,9 +65,12 @@ func IPv4StringToBytes(ipv4 string) ([]uint8, error) {
 }
 
 // BytesToIPv4String converts IPv4 bytes into IPv4 string
-func BytesToIPv4String(ipv4 []uint8) string {
+func BytesToIPv4String(ipv4 []uint8) (string, error) {
+  if len(ipv4) != 4 {
+    return "", errors.New(fmt.Sprintf("Malformed IPv4: %v", ipv4))
+  }
   ipv4String := net.IPv4(ipv4[0], ipv4[1], ipv4[2], ipv4[3])
-  return ipv4String.String()
+  return ipv4String.String(), nil
 }
 
 

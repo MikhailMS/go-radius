@@ -2,10 +2,12 @@
 package protocol
 
 import (
+  "fmt"
   "crypto/md5"
   "crypto/hmac"
   "encoding/binary"
   "math/rand"
+  "errors"
 
   "github.com/MikhailMS/go-radius/tools"
 )
@@ -140,27 +142,27 @@ type RadiusAttribute struct {
 // CreateRadAttributeByName creates RadiusAttribute with given name
 //
 // Returns nil if ATTRIBUTE with such name is not found in Dictionary
-func CreateRadAttributeByName(dictionary *Dictionary, attributeName string, value *[]uint8) RadiusAttribute {
+func CreateRadAttributeByName(dictionary *Dictionary, attributeName string, value *[]uint8) (RadiusAttribute, bool) {
   for _, attr := range dictionary.Attributes() {
     if attr.Name() == attributeName {
-      return RadiusAttribute {attr.Code(), attributeName, *value}
+      return RadiusAttribute {attr.Code(), attributeName, *value}, true
     }
   }
 
-  return RadiusAttribute{}
+  return RadiusAttribute{}, false
 }
 
 // CreateRadAttributeByID creates RadiusAttribute with given id
 //
 // Returns nil if ATTRIBUTE with such id is not found in Dictionary
-func CreateRadAttributeByID(dictionary *Dictionary, attributeID uint8, value *[]uint8) RadiusAttribute {
+func CreateRadAttributeByID(dictionary *Dictionary, attributeID uint8, value *[]uint8) (RadiusAttribute, bool) {
   for _, attr := range dictionary.Attributes() {
     if attr.Code() == attributeID {
-      return RadiusAttribute {attributeID, attr.Name(), *value}
+      return RadiusAttribute {attributeID, attr.Name(), *value}, true
     }
   }
 
-  return RadiusAttribute{}
+  return RadiusAttribute{}, false
 }
 
 // OverrideValue overriddes RadiusAttribute value
@@ -287,6 +289,7 @@ func (radAttr *RadiusAttribute) toBytes() []uint8 {
   return output
 }
 
+
 // RadiusPacket represents RADIUS packet
 type RadiusPacket struct {
   id            uint8
@@ -301,12 +304,12 @@ func InitialiseRadPacket(code TypeCode) RadiusPacket {
 }
 
 // InitialisePacketFromBytes initialises RADIUS packet from raw bytes
-func InitialiseRadPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) RadiusPacket {
+func InitialiseRadPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) (RadiusPacket, error) {
   var attributes []RadiusAttribute
  
   code, ok := typeCodeFromUint8((*bytes)[0])
   if !ok {
-    panic("Invalid TypeCode")
+    return RadiusPacket{}, errors.New("Invalid TypeCode")
   }
   id   := (*bytes)[1]
   authenticator := (*bytes)[4:20]
@@ -320,11 +323,15 @@ func InitialiseRadPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) Radius
     attrLength := int((*bytes)[lastIndex + 1])
     attrValue  := (*bytes)[(lastIndex + 2):(lastIndex + attrLength)]
 
-    attributes = append(attributes, CreateRadAttributeByID(dictionary, attrID, &attrValue))
+    _tmpAttr, ok := CreateRadAttributeByID(dictionary, attrID, &attrValue)
+    if !ok {
+      return RadiusPacket{}, errors.New(fmt.Sprintf("attribute with ID: %d is not found in dictionary", attrID))
+    }
+    attributes = append(attributes, _tmpAttr)
     lastIndex += attrLength
   }
 
-  return RadiusPacket {id, code, authenticator, attributes}
+  return RadiusPacket {id, code, authenticator, attributes}, nil
 }
 
 // SetAttributes sets attrbiutes for RadiusPacket

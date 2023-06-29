@@ -14,7 +14,7 @@ func TestCreateRadAttributeByName(t *testing.T) {
   dictPath   := "../dict_examples/test_dictionary_dict"
   dictionary := DictionaryFromFile(dictPath)
 
-  radiusAttribute := CreateRadAttributeByName(&dictionary, "User-Name", &[]uint8 { 1,2,3 })
+  radiusAttribute, _ := CreateRadAttributeByName(&dictionary, "User-Name", &[]uint8 { 1,2,3 })
   assert.Equal(t, expectedRadAttr, radiusAttribute, "Radius Attributes are not same!")
 }
 
@@ -24,8 +24,9 @@ func TestCreateRadAttributeByNameNonExisting(t *testing.T) {
   dictPath   := "../dict_examples/test_dictionary_dict"
   dictionary := DictionaryFromFile(dictPath)
 
-  radiusAttribute := CreateRadAttributeByName(&dictionary, "Non-Existing", &[]uint8 { 1,2,3 })
+  radiusAttribute, ok := CreateRadAttributeByName(&dictionary, "Non-Existing", &[]uint8 { 1,2,3 })
   assert.Equal(t, expectedRadAttr, radiusAttribute, "Radius Attributes are not same!")
+  assert.Equal(t, false, ok, "Radius Attributes are not same!")
 }
 
 func TestCreateRadAttributeByID(t *testing.T) {
@@ -34,7 +35,7 @@ func TestCreateRadAttributeByID(t *testing.T) {
   dictPath   := "../dict_examples/test_dictionary_dict"
   dictionary := DictionaryFromFile(dictPath)
 
-  radiusAttribute := CreateRadAttributeByID(&dictionary, 5, &[]uint8 { 1,2,3 })
+  radiusAttribute, _ := CreateRadAttributeByID(&dictionary, 5, &[]uint8 { 1,2,3 })
   assert.Equal(t, expectedRadAttr, radiusAttribute, "Radius Attributes are not same!")
   
 }
@@ -45,8 +46,9 @@ func TestCreateRadAttributeByIDNonExisting(t *testing.T) {
   dictPath   := "../dict_examples/test_dictionary_dict"
   dictionary := DictionaryFromFile(dictPath)
 
-  radiusAttribute := CreateRadAttributeByID(&dictionary, 205, &[]uint8 { 1,2,3 })
+  radiusAttribute, ok := CreateRadAttributeByID(&dictionary, 205, &[]uint8 { 1,2,3 })
   assert.Equal(t, expectedRadAttr, radiusAttribute, "Radius Attributes are not same!")
+  assert.Equal(t, false, ok, "Radius Attributes are not same!")
 }
 
 func TestInitialiseRadPacketFromBytes(t *testing.T) {
@@ -62,14 +64,14 @@ func TestInitialiseRadPacketFromBytes(t *testing.T) {
   callingSID           := []uint8("00-01-24-80-B3-9C")
   framedIPAddrBytes, _ := tools.IPv4StringToBytes("10.0.0.100")
 
-  attributes := []RadiusAttribute {
-    CreateRadAttributeByName(&dictionary, "NAS-IP-Address",     &nasIPAddrBytes),
-    CreateRadAttributeByName(&dictionary, "NAS-Port-Id",        &nasPortIDBytes),
-    CreateRadAttributeByName(&dictionary, "NAS-Identifier",     &nasID),
-    CreateRadAttributeByName(&dictionary, "Called-Station-Id",  &calledSID),
-    CreateRadAttributeByName(&dictionary, "Calling-Station-Id", &callingSID),
-    CreateRadAttributeByName(&dictionary, "Framed-IP-Address",  &framedIPAddrBytes),
-  }
+  nasIPAttr,      _ := CreateRadAttributeByName(&dictionary, "NAS-IP-Address",     &nasIPAddrBytes)
+  nasPortAttr,    _ := CreateRadAttributeByName(&dictionary, "NAS-Port-Id",        &nasPortIDBytes)
+  nasIDAttr,      _ := CreateRadAttributeByName(&dictionary, "NAS-Identifier",     &nasID)
+  calledSIDAttr,  _ := CreateRadAttributeByName(&dictionary, "Called-Station-Id",  &calledSID)
+  callingSIDAttr, _ := CreateRadAttributeByName(&dictionary, "Calling-Station-Id", &callingSID)
+  framedIPAttr,   _ := CreateRadAttributeByName(&dictionary, "Framed-IP-Address",  &framedIPAddrBytes)
+
+  attributes := []RadiusAttribute { nasIPAttr, nasPortAttr, nasIDAttr, calledSIDAttr, callingSIDAttr, framedIPAttr }
   authenticator := []uint8 { 215, 189, 213, 172, 57, 94, 141, 70, 134, 121, 101, 57, 187, 220, 227, 73 }
 
   expectedPacket := InitialiseRadPacket(AccountingRequest)
@@ -78,7 +80,7 @@ func TestInitialiseRadPacketFromBytes(t *testing.T) {
   expectedPacket.OverrideID(43)
   expectedPacket.OverrideAuthenticator(authenticator)
 
-  packetFromBytes := InitialiseRadPacketFromBytes(&dictionary, &radPacketBytes)
+  packetFromBytes, _ := InitialiseRadPacketFromBytes(&dictionary, &radPacketBytes)
   assert.Equal(t, expectedPacket, packetFromBytes, "Radius Packets are not same!")
 }
 
@@ -106,10 +108,9 @@ func TestRadiusPacketToBytes(t *testing.T) {
   dictPath   := "../dict_examples/integration_dict"
   dictionary := DictionaryFromFile(dictPath)
 
-  userName         := []uint8("testing")
-  attributes       := []RadiusAttribute {
-    CreateRadAttributeByName(&dictionary, "User-Name", &userName),
-  }
+  userName        := []uint8("testing")
+  userNameAttr, _ := CreateRadAttributeByName(&dictionary, "User-Name", &userName)
+  attributes      := []RadiusAttribute { userNameAttr }
   newAuthenticator := []uint8 { 0, 25, 100, 56, 13, 0, 67, 34, 39, 12, 88, 153, 0, 1, 2, 3 }
 
   radPacket := InitialiseRadPacket(AccessRequest)
@@ -126,9 +127,8 @@ func TestOverrideMessageAuthenticator(t *testing.T) {
   
   initMessageAuthenticator := []uint8 { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
   newMessageAuthenticator  := []uint8 { 1, 50, 0, 20, 0, 25, 100, 56, 13, 0, 67, 34, 39, 12, 88, 153 }
-  attributes               := []RadiusAttribute {
-    CreateRadAttributeByName(&dictionary, "Message-Authenticator", &initMessageAuthenticator),
-  }
+  msgAuthAttr, _           := CreateRadAttributeByName(&dictionary, "Message-Authenticator", &initMessageAuthenticator)
+  attributes               := []RadiusAttribute { msgAuthAttr }
 
   radPacket := InitialiseRadPacket(AccessRequest)
   radPacket.SetAttributes(attributes)
@@ -148,10 +148,10 @@ func TestGenerateMessageAuthenticator(t *testing.T) {
 
   userName         := []uint8("testing")
   messageAuthBytes := make([]uint8, 16)
-  attributes       := []RadiusAttribute {
-    CreateRadAttributeByName(&dictionary, "User-Name",             &userName),
-    CreateRadAttributeByName(&dictionary, "Message-Authenticator", &messageAuthBytes),
-  }
+
+  userNameAttr, _ := CreateRadAttributeByName(&dictionary, "User-Name",             &userName)
+  msgAuthAttr, _  := CreateRadAttributeByName(&dictionary, "Message-Authenticator", &messageAuthBytes)
+  attributes      := []RadiusAttribute { userNameAttr, msgAuthAttr }
 
   radPacket := InitialiseRadPacket(AccessRequest)
   radPacket.SetAttributes(attributes)

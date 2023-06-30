@@ -11,12 +11,20 @@ import (
 )
 
 type Client struct {
-  host           protocol.Host
-  server         string
-  secret         string
-  retries        uint16
-  timeout        uint16
+  host    protocol.Host
+  server  string
+  secret  string
+  retries uint16
+  timeout uint16
 }
+
+
+// RadiusClient interface specifies how to handle communication with RADIUS Server
+type RadiusClient interface {
+  SendPacket(packet *protocol.RadiusPacket) error
+  SendAndReceivePacket(packet *protocol.RadiusPacket) ([]uint8, error)
+}
+
 
 // InitialiseClient initialises client
 //

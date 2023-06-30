@@ -86,6 +86,9 @@ func IntegerToBytes(integer uint32) []uint8 {
 
 // BytesToInteger converts integer bytes into u32
 func BytesToInteger(integer []uint8) (uint32, bool) {
+  if len(integer) != 4 {
+    return 0, false
+  }
   return binary.BigEndian.Uint32(integer), true
 }
 
@@ -112,6 +115,10 @@ func TimestampToBytes(timestamp int64) ([]uint8, error) {
 // Golang has timestamps as int64, however RADIIUS protocol has timestamp('time') as uint32
 // therefore we need to apply a bit of logic to link these 2 together
 func BytesToTimestamp(timestamp []uint8) (uint32, bool) {
+  if len(timestamp) != 4 {
+    return 0, false
+  }
+
   _tmp := binary.BigEndian.Uint32(timestamp)
 	return _tmp, true
 }

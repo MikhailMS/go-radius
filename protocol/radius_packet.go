@@ -2,12 +2,14 @@
 package protocol
 
 import (
+  "errors"
   "fmt"
-  "crypto/md5"
+
   "crypto/hmac"
+  "crypto/md5"
   "encoding/binary"
   "math/rand"
-  "errors"
+  "unicode/utf8"
 
   "github.com/MikhailMS/go-radius/tools"
 )
@@ -191,10 +193,7 @@ func (radAttr *RadiusAttribute) Name() string {
 func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttributeTypes) bool {
   switch allowedType {
     case AsciiString:
-      if string(radAttr.value) != "" {
-        return true
-      }
-      return false
+      return utf8.Valid(radAttr.value)
     case ByteString:
       if string(radAttr.value) != "" {
         return true
@@ -245,6 +244,10 @@ func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttribu
 func (radAttr *RadiusAttribute) OriginalStringValue(allowedType SupportedAttributeTypes) (string, bool) {
   switch allowedType {
     case AsciiString:
+      ok := utf8.Valid(radAttr.value)
+      if !ok {
+        return "", false
+      }
       return string(radAttr.value), true
     case IPv4Addr:
       value, err := tools.BytesToIPv4String(radAttr.value)

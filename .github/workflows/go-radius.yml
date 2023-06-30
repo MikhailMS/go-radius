@@ -5,9 +5,9 @@ name: GoRadius
 
 on:
   push:
-    branches: [ master, development, feature/* ]
+    branches: [ main, development, feature/* ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   Test:

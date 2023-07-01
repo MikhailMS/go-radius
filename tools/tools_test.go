@@ -53,7 +53,7 @@ func TestIPv4BytesToString(t *testing.T) {
 }
 
 func TestIntegerToBytes(t *testing.T) {
-  expectedBytes := []uint8{ 0, 0, 39, 16 } 
+  expectedBytes := []uint8{ 0, 0, 39, 16 }
 
   integer := uint32(10000)
   assert.Equal(t, expectedBytes, IntegerToBytes(integer), "Integer bytes is not correct!")
@@ -62,10 +62,26 @@ func TestIntegerToBytes(t *testing.T) {
 func TestBytesToInteger(t *testing.T) {
   expectedInteger := uint32(10000)
 
-  integerBytes := []uint8{ 0, 0, 39, 16 } 
+  integerBytes := []uint8{ 0, 0, 39, 16 }
 
   integer, _ := BytesToInteger(integerBytes)
   assert.Equal(t, expectedInteger, integer, "Integer is not correct!")
+}
+
+func TestInteger64ToBytes(t *testing.T) {
+  expectedBytes := []uint8{ 0, 0, 0, 0, 0, 0, 39, 16 }
+
+  integer := uint64(10000)
+  assert.Equal(t, expectedBytes, Integer64ToBytes(integer), "Integer64 bytes is not correct!")
+}
+
+func TestBytesToInteger64(t *testing.T) {
+  expectedInteger := uint64(10000)
+
+  integerBytes := []uint8{ 0, 0, 0, 0, 0, 0, 39, 16 }
+
+  integer, _ := BytesToInteger64(integerBytes)
+  assert.Equal(t, expectedInteger, integer, "Integer64 is not correct!")
 }
 
 func TestTimestampToBytes(t *testing.T) {

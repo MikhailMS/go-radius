@@ -13,8 +13,8 @@ import (
 func TestGetRadiusAttributeOriginalStringValue(t *testing.T) {
   fmt.Println("TESTS")
   
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -26,8 +26,8 @@ func TestGetRadiusAttributeOriginalStringValue(t *testing.T) {
 }
 
 func TestGetRadiusAttributeOriginalStringValueError(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -39,8 +39,8 @@ func TestGetRadiusAttributeOriginalStringValueError(t *testing.T) {
 }
 
 func TestGetRadiusAttributeOriginalIntegerValue(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -53,8 +53,8 @@ func TestGetRadiusAttributeOriginalIntegerValue(t *testing.T) {
 }
 
 func TestGetRadiusAttributeOriginalIntegerValueError(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -66,8 +66,8 @@ func TestGetRadiusAttributeOriginalIntegerValueError(t *testing.T) {
 }
 
 func TestVerifyEmptyReply(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -89,8 +89,8 @@ func TestVerifyEmptyReply(t *testing.T) {
 }
 
 func TestVerifyMalformedReply(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 
@@ -112,8 +112,8 @@ func TestVerifyMalformedReply(t *testing.T) {
 }
 
 func TestVerifyReply(t *testing.T) {
-  dictPath   := "../dict_examples/integration_dict"
-  dictionary := protocol.DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/integration_dict"
+  dictionary, _ := protocol.DictionaryFromFile(dictPath)
   
   client := InitialiseClient(dictionary, "127.0.0.1", "secret", 1, 2)
 

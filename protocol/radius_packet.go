@@ -4,6 +4,7 @@ package protocol
 import (
   "errors"
   "fmt"
+  "log"
 
   "crypto/hmac"
   "crypto/md5"
@@ -199,11 +200,6 @@ func (radAttr *RadiusAttribute) VerifyOriginalValue(allowedType SupportedAttribu
         return true
       }
       return false
-    case Concat:
-      if string(radAttr.value) != "" {
-        return true
-      }
-      return false
     case Integer:
       _, ok := tools.BytesToInteger(radAttr.value)
       if ok {
@@ -307,12 +303,12 @@ type RadiusPacket struct {
 }
 
 // InitialisePacket initialises RADIUS packet with random ID and authenticator
-func InitialiseRadPacket(code TypeCode) RadiusPacket {
+func InitialiseRadiusPacket(code TypeCode) RadiusPacket {
   return RadiusPacket {createPacketId(), code, createPacketAuthenticator(), []RadiusAttribute{}}
 }
 
 // InitialisePacketFromBytes initialises RADIUS packet from raw bytes
-func InitialiseRadPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) (RadiusPacket, error) {
+func InitialiseRadiusPacketFromBytes(dictionary *Dictionary, bytes *[]uint8) (RadiusPacket, error) {
   var attributes []RadiusAttribute
  
   code, ok := typeCodeFromUint8((*bytes)[0])
@@ -360,41 +356,59 @@ func (radPacket *RadiusPacket) OverrideAuthenticator(authenticator []uint8) {
 // Overrides RadiusPacket Message-Authenticator
 //
 // Note: would fail if RadiusPacket has no Message-Authenticator attribute defined
-func (radPacket *RadiusPacket) OverrideMessageAuthenticator(newMessageAuth []uint8) {
+func (radPacket *RadiusPacket) OverrideMessageAuthenticator(newMessageAuth []uint8) error {
   for idx := range radPacket.attributes {
     attr := &radPacket.attributes[idx]
     if attr.Name() == "Message-Authenticator" {
       attr.OverrideValue(newMessageAuth)
+      return nil
     }
   }
+
+  return errors.New("Message-Authenticator attribute not found in packet")
 }
 
 // Generates HMAC-MD5 hash for Message-Authenticator attribute
 //
 // Note 1: this function assumes that RadiusAttribute Message-Authenticator already exists in RadiusPacket
 // Note 2: Message-Authenticator in RadiusPacket would be overwritten when this function is called
-func (radPacket *RadiusPacket) GenerateMessageAuthenticator(secret string) {
+func (radPacket *RadiusPacket) GenerateMessageAuthenticator(secret string) error {
   // Step 1. Set Message-Authenticator to an array of 16 zeros in the RadiusPacket
   zeroedAuthenticator := make([]uint8, 16)
-  radPacket.OverrideMessageAuthenticator(zeroedAuthenticator)
+
+  err := radPacket.OverrideMessageAuthenticator(zeroedAuthenticator)
+  if err != nil {
+    return err
+  }
 
   // Step 2. Calculate HMAC-MD5 for the entire RadiusPacket
+  packetBytes, ok := radPacket.ToBytes()
+  if !ok {
+    return errors.New("failed to convert RadiusPacket to bytes")
+  }
+
   hash := hmac.New(md5.New, []uint8(secret))
-  hash.Write(radPacket.ToBytes())
+  hash.Write(packetBytes)
 
   // Step 3. Set Message-Authenticator to the result of Step 2
-  radPacket.OverrideMessageAuthenticator(hash.Sum(nil))
-}
-
-// MessageAuthenticator returns Message-Authenticator value, if exists in RadiusPacket
-func (radPacket *RadiusPacket) MessageAuthenticator() []uint8 {
-  for _, attr := range radPacket.attributes {
-    if attr.Name() == "Message-Authenticator" {
-      return attr.value
-    }
+  err = radPacket.OverrideMessageAuthenticator(hash.Sum(nil))
+  if err != nil {
+    return err
   }
 
   return nil
+}
+
+// MessageAuthenticator returns Message-Authenticator value, if exists in RadiusPacket
+// otherwise returns an error
+func (radPacket *RadiusPacket) MessageAuthenticator() ([]uint8, error) {
+  for _, attr := range radPacket.attributes {
+    if attr.Name() == "Message-Authenticator" {
+      return attr.value, nil
+    }
+  }
+
+  return nil, errors.New("Message-Authenticator attribute not found in packet")
 }
 
 // ID returns RadiusPacket id
@@ -440,7 +454,7 @@ func (radPacket *RadiusPacket) AttributeByID(attrID uint8) RadiusAttribute {
 }
 
 // ToBytes converts RadiusPacket into ready-to-be-sent bytes slice
-func (radPacket *RadiusPacket) ToBytes() []uint8 {
+func (radPacket *RadiusPacket) ToBytes() ([]uint8, bool) {
   /* Prepare packet for a transmission to server/client
    *
    *          0               1               2         3
@@ -471,7 +485,8 @@ func (radPacket *RadiusPacket) ToBytes() []uint8 {
 
   code, ok := typeCodeToUint8(radPacket.code)
   if !ok {
-    panic("Invalid TypeCode")
+    log.Println("WARNING: encountered invalid TypeCode when converting RadiusPacket to bytes")
+    return []uint8{}, false
   }
   packetBytes = append(packetBytes, code)
   packetBytes = append(packetBytes, radPacket.id)
@@ -479,7 +494,7 @@ func (radPacket *RadiusPacket) ToBytes() []uint8 {
   packetBytes = append(packetBytes, radPacket.authenticator...)
   packetBytes = append(packetBytes, packetAttr...)
 
-  return packetBytes
+  return packetBytes, true
 }
 
 
@@ -504,6 +519,6 @@ func createPacketAuthenticator() []uint8 {
 func packetLengthToBytes(length uint16) []uint8 {
   bytes := make([]byte, 2)
 
-	binary.BigEndian.PutUint16(bytes, length)
+  binary.BigEndian.PutUint16(bytes, length)
   return bytes
 }

@@ -71,28 +71,28 @@ func (client *Client) Timeout() uint16 {
 //
 // You would need to set attributes manually via *set_attributes()* function
 func (client *Client) CreateRadiusPacket(typeCode protocol.TypeCode) protocol.RadiusPacket {
-  return protocol.InitialiseRadPacket(typeCode)
+  return protocol.InitialiseRadiusPacket(typeCode)
 }
 
 // CreateAuthRadiusPacket creates RADIUS packet with AccessRequest TypeCode without attributes
 //
 // You would need to set attributes manually via *set_attributes()* function
 func (client *Client) CreateAuthRadiusPacket() protocol.RadiusPacket {
-  return protocol.InitialiseRadPacket(protocol.AccessRequest)
+  return protocol.InitialiseRadiusPacket(protocol.AccessRequest)
 }
 
 // CreateAcctRadiusPacket creates RADIUS packet with AccountingRequest TypeCode without attributes
 //
 // You would need to set attributes manually via *set_attributes()* function
 func (client *Client) CreateAcctRadiusPacket() protocol.RadiusPacket {
-  return protocol.InitialiseRadPacket(protocol.AccountingRequest)
+  return protocol.InitialiseRadiusPacket(protocol.AccountingRequest)
 }
 
 // CreateCoaRadiusPacket creates RADIUS packet with CoARequest TypeCode without attributes
 //
 // You would need to set attributes manually via *set_attributes()* function
 func (client *Client) CreateCoaRadiusPacket() protocol.RadiusPacket {
-  return protocol.InitialiseRadPacket(protocol.CoARequest)
+  return protocol.InitialiseRadiusPacket(protocol.CoARequest)
 }
 
 // CreateAttributeByName creates RADIUS packet attribute by Name, that is defined in dictionary file
@@ -140,8 +140,8 @@ func (client *Client) RadiusAttrOriginalIntegerValue(attribute protocol.RadiusAt
 }
 
 // InitialisePacketFromBytes creates RADIUS packet attribute by ID, that is defined in dictionary file
-func (client *Client) InitialisePacketFromBytes(reply *[]uint8) (protocol.RadiusPacket, error) {
-  return client.host.InitialisePacketFromBytes(reply)
+func (client *Client) InitialiseRadiusPacketFromBytes(reply *[]uint8) (protocol.RadiusPacket, error) {
+  return client.host.InitialiseRadiusPacketFromBytes(reply)
 }
 
 // VerifyReply creates RADIUS packet attribute by ID, that is defined in dictionary file

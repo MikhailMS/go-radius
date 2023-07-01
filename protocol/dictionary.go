@@ -3,6 +3,7 @@ package protocol
 import (
   "bufio"
   "fmt"
+  "log"
   "os"
   "strconv"
   "strings"
@@ -36,21 +37,6 @@ const (
     // Go's \[u8;6\]; RFC 8044 calls this "ifid"
     InterfaceId
     // Go's u32
-    Enum
-    // Go's [u8]
-    Tlv
-    // Go's [u8]; RFC 8044 defines this as vendor-specific data
-    Vsa
-    // Go's [u8]; RFC 8044 defines this as Extended-Vendor-Specific Attribute (FreeRADIUS
-    // accepts VSA instead of EVS data type)
-    Evs
-    // Go's [u8]; Doesn't look like a type on its own, but rather an extension to some data types (in FreeRADIUS this is a flag)
-    // usually string/octets
-    Concat
-    // Go's [u8]; Doesn't look like a type on its own, but rather an extension to some data types (in FreeRADIUS this is a flag)
-    Extended
-    // Go's [u8]; Doesn't look like a type on its own, but rather an extension to some data types (in FreeRADIUS this is a flag)
-    LongExtended
 )
 
 // =============================
@@ -120,7 +106,7 @@ type Dictionary struct {
   vendors    []DictionaryVendor
 }
 
-func DictionaryFromFile(filePath string) Dictionary {
+func DictionaryFromFile(filePath string) (Dictionary, error) {
   var attributes []DictionaryAttribute
   var values     []DictionaryValue
   var vendors    []DictionaryVendor 
@@ -129,7 +115,7 @@ func DictionaryFromFile(filePath string) Dictionary {
 
   file, err := os.Open(filePath)
   if err != nil {
-    panic(err)
+    return Dictionary{}, err
   }
   defer file.Close()
 
@@ -156,10 +142,10 @@ func DictionaryFromFile(filePath string) Dictionary {
   }
 
   if err := scanner.Err(); err != nil {
-    panic(err)
+    return Dictionary{}, err
   }
 
-  return Dictionary{ attributes, values, vendors }
+  return Dictionary{ attributes, values, vendors }, nil
 }
 
 func (dict *Dictionary) Attributes() []DictionaryAttribute {
@@ -176,44 +162,31 @@ func (dict *Dictionary) Vendors() []DictionaryVendor {
 // =============================
 
 
-func assignAttributeType(codeType string) SupportedAttributeTypes {
+func assignAttributeType(codeType string) (SupportedAttributeTypes, bool) {
   switch codeType {
     case "text":
-      return AsciiString
+      return AsciiString, true
     case "string":
-      return ByteString
+      return ByteString, true
     case "integer":
-      return Integer
+      return Integer, true
     case "integer64":
-      return Integer64
+      return Integer64, true
     case "time":
-      return Date
+      return Date, true
     case "ipv4addr", "ipaddr":
-      return IPv4Addr
+      return IPv4Addr, true
     case "ipv4prefix":
-      return IPv4Prefix
+      return IPv4Prefix, true
     case "ipv6addr":
-      return IPv6Addr
+      return IPv6Addr, true
     case "ipv6prefix":
-      return IPv6Prefix
+      return IPv6Prefix, true
     case "ifid":
-      return InterfaceId
-    case "enum":
-      return Enum
-    case "tlv":
-      return Tlv
-    case "vsa":
-      return Vsa
-    case "evs":
-      return Evs
-    case "concat":
-      return Concat
-    case "extended":
-      return Extended
-    case "long-extended":
-      return LongExtended
+      return InterfaceId, true
     default:
-      panic(fmt.Sprintf("cannot assign attribute type {%s} becasue it is not supported", codeType))
+      log.Println(fmt.Sprintf("WARNING: cannot assign attribute type {%s} becasue it is not supported", codeType))
+      return 0, false
   }
 }
 
@@ -223,7 +196,10 @@ func parseAttribute(parsedLine []string, vendorName string, attributes *[]Dictio
     panic(err)
   }
 
-  *attributes = append(*attributes, DictionaryAttribute{parsedLine[1], vendorName, uint8(value), assignAttributeType(parsedLine[3])})
+  attrType, ok := assignAttributeType(parsedLine[3])
+  if ok {
+    *attributes = append(*attributes, DictionaryAttribute{parsedLine[1], vendorName, uint8(value), attrType})
+  }
 }
 
 func parseValue(parsedLine []string, vendorName string, values *[]DictionaryValue) {

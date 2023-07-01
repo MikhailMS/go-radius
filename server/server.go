@@ -2,6 +2,8 @@
 package server
 
 import (
+  "errors"
+
   "crypto/md5"
 
   "github.com/MikhailMS/go-radius/protocol"
@@ -76,19 +78,22 @@ func (server *Server) Timeout() uint16 {
 }
 
 // CreateReplyPacket creates RADIUS packet with any TypeCode without attributes
-func (server *Server) CreateReplyPacket(replyCode protocol.TypeCode, attributes []protocol.RadiusAttribute, request *[]uint8, secret string) protocol.RadiusPacket {
-  replyPacket := protocol.InitialiseRadPacket(replyCode)
+func (server *Server) CreateReplyPacket(replyCode protocol.TypeCode, attributes []protocol.RadiusAttribute, request *[]uint8, secret string) (protocol.RadiusPacket, error) {
+  replyPacket := protocol.InitialiseRadiusPacket(replyCode)
 
   replyPacket.SetAttributes(attributes)
   replyPacket.OverrideID((*request)[1])
 
-  replyBytes  := replyPacket.ToBytes()
-  requestAuth := (*request)[4:20]
+  replyBytes, ok  := replyPacket.ToBytes()
+  if !ok {
+    return protocol.RadiusPacket{}, errors.New("failed to create reply RadiusPacket")
+  }
 
+  requestAuth   := (*request)[4:20]
   authenticator := createReplyAuthenticator(secret, &replyBytes, &requestAuth)
 
   replyPacket.OverrideAuthenticator(authenticator)
-  return replyPacket
+  return replyPacket, nil
 }
 
 // CreateAttributeByName creates RADIUS packet attribute by Name, that is defined in dictionary file
@@ -106,7 +111,7 @@ func (server *Server) CreateAttributeByID(attrID uint8, value *[]uint8) (protoco
 // Server would try to build RadiusPacket from raw bytes, and if it succeeds then packet is
 // valid, otherwise would return an Error
 func (server *Server) VerifyRequest(packet *[]uint8) error {
-  _, err := server.host.InitialisePacketFromBytes(packet)
+  _, err := server.host.InitialiseRadiusPacketFromBytes(packet)
   return err
 }
 
@@ -122,7 +127,7 @@ func (server *Server) VerifyRequestAttributes(packet *[]uint8) error {
 //
 // Unlike [VerifyRequest](Server::VerifyRequest), on success this function would return RadiusPacket
 func (server *Server) InitialisePacketFromBytes(request *[]uint8) (protocol.RadiusPacket, error) {
-  return server.host.InitialisePacketFromBytes(request)
+  return server.host.InitialiseRadiusPacketFromBytes(request)
 }
 
 // IsHostAllowed checks if host from where Server received RADIUS request is allowed host,
@@ -135,7 +140,7 @@ func createReplyAuthenticator(secret string, replyBytes *[]uint8, requestAuth *[
   md5Hash := md5.New()
 
   md5Hash.Write((*replyBytes)[0:4]); // Append reply's   type code, reply ID and reply length
-  md5Hash.Write(*requestAuth);        // Append request's authenticator
+  md5Hash.Write(*requestAuth);       // Append request's authenticator
   md5Hash.Write((*replyBytes)[20:]); // Append reply's   attributes
   md5Hash.Write([]uint8(secret));    // Append server's  secret. Possibly it should be client's secret, which sould be stored together with allowed hostnames ?
 

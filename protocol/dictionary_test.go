@@ -12,8 +12,8 @@ func TestDictionaryFromFile(t *testing.T) {
   var vendors    []DictionaryVendor
 
 
-  dictPath   := "../dict_examples/test_dictionary_dict"
-  dictionary := DictionaryFromFile(dictPath)
+  dictPath      := "../dict_examples/test_dictionary_dict"
+  dictionary, _ := DictionaryFromFile(dictPath)
 
 
   attributes = append(attributes, DictionaryAttribute{

@@ -68,6 +68,7 @@ func (host *Host) CreateAttributeByID(attributeID uint8, value *[]uint8) (Radius
 func (host *Host) Port(code TypeCode) (uint16, bool) {
   switch code {
     case AccessRequest:
+      return host.authPort, true
     case AccountingRequest:
       return host.acctPort, true
     case CoARequest:
@@ -75,8 +76,6 @@ func (host *Host) Port(code TypeCode) (uint16, bool) {
     default:
       return 0, false
   }
-
-  return 0, false
 }
 
 // Dictionary returns host's dictionary instance
@@ -115,8 +114,8 @@ func (host *Host) DictionaryAttributeByName(packetAttrName string) (DictionaryAt
 }
 
 // InitialisePacketFromBytes initialises RadiusPacket from bytes
-func (host *Host) InitialisePacketFromBytes(packet *[]uint8) (RadiusPacket, error) {
-  return InitialiseRadPacketFromBytes(&host.dictionary, packet)
+func (host *Host) InitialiseRadiusPacketFromBytes(packet *[]uint8) (RadiusPacket, error) {
+  return InitialiseRadiusPacketFromBytes(&host.dictionary, packet)
 }
 
 // VerifyPacketAttributes verifies that RadiusPacket attributes have valid values
@@ -124,7 +123,7 @@ func (host *Host) InitialisePacketFromBytes(packet *[]uint8) (RadiusPacket, erro
 // Note: doesn't verify Message-Authenticator attribute, because it is HMAC-MD5 hash, not an
 // ASCII string
 func (host *Host) VerifyPacketAttributes(packet *[]uint8) error {
-  radPacket, err := InitialiseRadPacketFromBytes(&host.dictionary, packet)
+  radPacket, err := InitialiseRadiusPacketFromBytes(&host.dictionary, packet)
   if err != nil {
     return err
   }
@@ -149,20 +148,28 @@ func (host *Host) VerifyPacketAttributes(packet *[]uint8) error {
 // VerifyMessageauthenticator verifies Message-Authenticator value
 func (host *Host) VerifyMessageAuthenticator(secret string, packet *[]uint8) error {
   // Step 1. Get Message-Authenticator from packet
-  radPacket, err := InitialiseRadPacketFromBytes(&host.dictionary, packet)
+  radPacket, err := InitialiseRadiusPacketFromBytes(&host.dictionary, packet)
   if err != nil {
     return err
   }
 
-  originalMsgAuth := radPacket.MessageAuthenticator()
+  originalMsgAuth, err := radPacket.MessageAuthenticator()
+  if err != nil {
+    return err
+  }
 
   // Step 2. Set Message-Authenticator in packet to [0; 16]
   zeroedAuthenticator := make([]uint8, 16)
   radPacket.OverrideMessageAuthenticator(zeroedAuthenticator)
 
   // Step 3. Calculate HMAC-MD5 for the packet
+  packetBytes, ok := radPacket.ToBytes()
+  if !ok {
+    return errors.New("Failed to convert RadiusPacket to bytes")
+  }
+
   calculatedHash := hmac.New(md5.New, []uint8(secret))
-  calculatedHash.Write(radPacket.ToBytes())
+  calculatedHash.Write(packetBytes)
 
   // Step 4. Compare calculated hash with the one extracted in Step 1
   if hmac.Equal(originalMsgAuth, calculatedHash.Sum(nil)) {

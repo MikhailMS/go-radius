@@ -54,25 +54,45 @@ func BytesToIPv6String(ipv6 []uint8) (string, bool) {
 
 // IPv4StringToBytes converts IPv4 Address string into vector of bytes
 //
-// Should be used for any Attribute of type **ipaddr** to ensure value is encoded correctly
+// Should be used for any Attribute of type **ipaddr**, **ipv4addr** & **ipv4prefix** to ensure value is encoded correctly
 // Returns value & error, so need to check if any errors occured before using the value
 func IPv4StringToBytes(ipv4 string) ([]uint8, error) {
-  if strings.Contains(ipv4, "/") {
-    return []uint8{}, errors.New("No support for IPv4 addresses with subnet")
+  var ipv4Bytes []uint8
+  processedIPv4 := strings.Split(ipv4, "/")
+
+  if len(processedIPv4) == 2 {
+    value, err := strconv.ParseUint(processedIPv4[1], 10, 8) // Doesn't really converts to uint8, require further cast
+    if err != nil {
+      return []uint8{}, err
+    }
+
+    if value > 32 {
+      return []uint8{}, errors.New(fmt.Sprintf("IPv4 Subnet must be no greater than 32, you provided %d", value))
+    }
+
+    ipv4Bytes = append(ipv4Bytes, 0, uint8(value))
   }
 
-  return net.ParseIP(ipv4)[12:], nil
+  ipv4Bytes = append(ipv4Bytes, net.ParseIP(processedIPv4[0])[12:]...)
+
+  return ipv4Bytes, nil
 }
 
 // BytesToIPv4String converts IPv4 bytes into IPv4 string
 func BytesToIPv4String(ipv4 []uint8) (string, error) {
-  if len(ipv4) != 4 {
+  switch len(ipv4) {
+  case 6:
+    subnet     := binary.BigEndian.Uint16(ipv4[0:2])
+    ipv4String := net.IPv4(ipv4[2], ipv4[3], ipv4[4], ipv4[5])
+
+    return fmt.Sprintf("%s/%d", ipv4String.String(), subnet), nil
+  case 4:
+    ipv4String := net.IPv4(ipv4[0], ipv4[1], ipv4[2], ipv4[3])
+    return ipv4String.String(), nil
+  default:
     return "", errors.New(fmt.Sprintf("Malformed IPv4: %v", ipv4))
   }
-  ipv4String := net.IPv4(ipv4[0], ipv4[1], ipv4[2], ipv4[3])
-  return ipv4String.String(), nil
 }
-
 
 // IntegerToBytes converts u32 into vector of bytes
 //
@@ -90,6 +110,24 @@ func BytesToInteger(integer []uint8) (uint32, bool) {
     return 0, false
   }
   return binary.BigEndian.Uint32(integer), true
+}
+
+// Integer64ToBytes converts u64 into vector of bytes
+//
+// Should be used for any Attribute of type **integer** to ensure value is encoded correctly
+func Integer64ToBytes(integer uint64) []uint8 {
+  output := make([]uint8, 8)
+
+  binary.BigEndian.PutUint64(output, integer)
+  return output
+}
+
+// BytesToInteger64 converts integer bytes into u64
+func BytesToInteger64(integer []uint8) (uint64, bool) {
+  if len(integer) != 8 {
+    return 0, false
+  }
+  return binary.BigEndian.Uint64(integer), true
 }
 
 // TimestampToBytes converts timestamp (int64) into vector of bytes

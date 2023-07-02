@@ -17,20 +17,6 @@ type Server struct {
   timeout      uint16
 }
 
-
-// RadiusServer interface specifies how to handle communication with RADIUS Client
-type RadiusServer interface {
-  // Run starts and keeps server running
-  Run() error
-  // HandleAuthRequest resolves AUTH RADIUS request
-  HandleAuthRequest() ([]uint8, error)
-  // HandleAcctRequest resolves ACCT RADIUS request
-  HandleAcctRequest() ([]uint8, error)
-  // HandleCoaRequest resolves COA RADIUS request
-  HandleCoaRequest() ([]uint8, error)
-}
-
-
 // InitialiseClient initialises client
 //
 // Please note that you would need to call **SetPort** manually to initialise Client in full

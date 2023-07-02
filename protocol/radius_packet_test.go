@@ -99,7 +99,7 @@ func TestOverrideAuthenticator(t *testing.T) {
   radPacket := InitialiseRadiusPacket(AccountingRequest)
 
   radPacket.OverrideAuthenticator(expectedAuthenticator)
-  assert.Equal(t, expectedAuthenticator, radPacket.Authenticator(), "Radius Packet Authhenticator was not changed!")
+  assert.Equal(t, expectedAuthenticator, radPacket.Authenticator(), "Radius Packet Authenticator was not changed!")
 }
 
 func TestRadiusPacketToBytes(t *testing.T) {
@@ -137,7 +137,7 @@ func TestOverrideMessageAuthenticator(t *testing.T) {
   radPacket.OverrideMessageAuthenticator(newMessageAuthenticator)
 
   msgAuthenticator, _ := radPacket.MessageAuthenticator()
-  assert.Equal(t, newMessageAuthenticator, msgAuthenticator, "Radius Packet Authhenticator was not changed!") 
+  assert.Equal(t, newMessageAuthenticator, msgAuthenticator, "Radius Packet Authenticator was not changed!")
 }
 
 func TestGenerateMessageAuthenticator(t *testing.T) {
@@ -164,5 +164,5 @@ func TestGenerateMessageAuthenticator(t *testing.T) {
   radPacket.GenerateMessageAuthenticator(secret)
 
   msgAuthenticator, _ := radPacket.MessageAuthenticator()
-  assert.Equal(t, expectedMessageAuthenticatorBytes, msgAuthenticator, "Radius Packet Message Authhenticator was not set to correct bytes!")
+  assert.Equal(t, expectedMessageAuthenticatorBytes, msgAuthenticator, "Radius Packet Message Authenticator was not set to correct bytes!")
 }

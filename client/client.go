@@ -18,14 +18,6 @@ type Client struct {
   timeout uint16
 }
 
-
-// RadiusClient interface specifies how to handle communication with RADIUS Server
-type RadiusClient interface {
-  SendPacket(packet *protocol.RadiusPacket) error
-  SendAndReceivePacket(packet *protocol.RadiusPacket) ([]uint8, error)
-}
-
-
 // InitialiseClient initialises client
 //
 // Please note that you would need to call **SetPort** manually to initialise Client in full
